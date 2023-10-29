@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    name: frontend-dep-label
+  annotations:
+    class: frontend-k8s
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: frontend
+      app: K8s-project
+  template:
+    metadata:
+      labels:
+        tier: frontend
+        app: K8s-project
+    spec:
+      containers:
+      - name: frontend
+        image: 270962712979.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
+        ports:
+        - containerPort: 8080
+          name: tcp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    name: frontend-svc
+spec:
+  type: NodePort
+  selector:
+      tier: frontend
+      app: K8s-project
+  ports:
+  - protocol: TCP
+    port: 9090
+    targetPort: 8080
+    nodePort: 31500
