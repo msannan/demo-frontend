@@ -1,0 +1,44 @@
+Jenkins:
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                echo 'Cloning repo from git....'
+                git branch: 'main', url: 'https://github.com/msannan/demo-frontend.git'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                sh 'aws configure set aws_access_key_id $aws_access_key_id'
+                sh 'aws configure set aws_secret_access_key $aws_secret_access_key'
+                sh 'aws configure set default.region $region'
+                sh 'docker build -t dkr.ecr.us-east-1.amazonaws.com/backend:latest .'
+                sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin dkr.ecr.us-east-1.amazonaws.com'
+                sh 'docker push frontend:latest'
+            }
+        }
+        stage('Deploy on K8s cluster') {
+            steps {
+                sh 'aws eks update-kubeconfig --name testpoc --region us-east-1'
+                sh 'aws configure set aws_access_key_id $aws_access_key_id'
+                sh 'aws configure set aws_secret_access_key $aws_secret_access_key'
+                sh 'aws configure set default.region $region'
+                sh 'docker pull backend:latest'
+                sh 'kubectl rollout restart deployment frontend'
+            }
+        }
+    }
+}
+
+Kubectl installation:
+sudo curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/$(uname | tr '[:upper:]' '[:lower:]')/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+kubectl version
+pip install --upgrade awscli
+
+Create EKS:
+eksctl create cluster --name testeks --version 1.24 --region us-east-1 --nodegroup-name testnodes --node-type t2.medium --nodes 1
+aws eks --region us-east-2 update-kubeconfig --name testeks
